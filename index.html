@@ -85,13 +85,13 @@
     }
     /* 칸막이 (리사이저) */
     .resizer {
-      width: 6px;
+      width: 3px;
       background-color: #cbd5e1;
       cursor: col-resize;
       transition: background-color 0.2s;
     }
     .resizer:hover, .resizer.dragging {
-      background-color: #03c75a;
+      background-color: #E6EBE0;
     }
     .resizing iframe {
       pointer-events: none;
@@ -125,8 +125,8 @@
 
         const input = document.createElement('input');
         input.type = 'text';
-        // 기본값으로 네이버 밴드 주소 설정
-        input.value = 'https://band.us';
+        // 기본값은 none 
+        input.value = '';
         input.placeholder = 'https:// 주소 입력 후 Enter';
 
         const goBtn = document.createElement('button');
