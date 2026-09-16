@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>멀티 밴드 뷰어</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      font-family: sans-serif;
+      overflow: hidden;
+      background-color: #f4f6f8;
+    }
+    header {
+      background-color: #1e293b;
+      color: white;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+    }
+    header input[type="number"] {
+      width: 60px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    header button {
+      padding: 5px 12px;
+      background-color: #03c75a; /* 네이버 그린 */
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    header button:hover { background-color: #02b150; }
+
+    #container {
+      display: flex;
+      flex: 1;
+      width: 100%;
+      height: calc(100vh - 52px);
+      overflow: hidden;
+    }
+    .panel {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-width: 180px;
+      background: #ffffff;
+    }
+    .panel-header {
+      display: flex;
+      padding: 8px;
+      background-color: #e2e8f0;
+      border-bottom: 1px solid #cbd5e1;
+      gap: 6px;
+    }
+    .panel-header input {
+      flex: 1;
+      padding: 6px 10px;
+      font-size: 13px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      outline: none;
+    }
+    .panel-header button {
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid #94a3b8;
+      background: white;
+      border-radius: 4px;
+    }
+    .panel iframe {
+      flex: 1;
+      width: 100%;
+      border: none;
+      background-color: #ffffff;
+    }
+    /* 칸막이 (리사이저) */
+    .resizer {
+      width: 6px;
+      background-color: #cbd5e1;
+      cursor: col-resize;
+      transition: background-color 0.2s;
+    }
+    .resizer:hover, .resizer.dragging {
+      background-color: #03c75a;
+    }
+    .resizing iframe {
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <label for="pane-count">분할 수 (3~10):</label>
+    <input type="number" id="pane-count" min="3" max="10" value="3" />
+    <button id="apply-btn">분할 적용</button>
+  </header>
+
+  <div id="container"></div>
+
+  <script>
+    const container = document.getElementById('container');
+    const paneCountInput = document.getElementById('pane-count');
+    const applyBtn = document.getElementById('apply-btn');
+
+    function createPanels(count) {
+      container.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        const panel = document.createElement('div');
+        panel.className = 'panel';
+        panel.style.flex = "1";
+
+        const header = document.createElement('div');
+        header.className = 'panel-header';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        // 기본값으로 네이버 밴드 주소 설정
+        input.value = 'https://band.us';
+        input.placeholder = 'https:// 주소 입력 후 Enter';
+
+        const goBtn = document.createElement('button');
+        goBtn.textContent = '이동';
+
+        header.appendChild(input);
+        header.appendChild(goBtn);
+
+        const iframe = document.createElement('iframe');
+        iframe.src = input.value;
+
+        const loadUrl = () => {
+          let url = input.value.trim();
+          if (!url) return;
+          if (!/^https?:\/\//i.test(url)) {
+            url = 'https://' + url;
+            input.value = url;
+          }
+          iframe.src = url;
+        };
+
+        goBtn.addEventListener('click', loadUrl);
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') loadUrl();
+        });
+
+        panel.appendChild(header);
+        panel.appendChild(iframe);
+        container.appendChild(panel);
+
+        if (i < count - 1) {
+          const resizer = document.createElement('div');
+          resizer.className = 'resizer';
+          setupResizer(resizer, panel);
+          container.appendChild(resizer);
+        }
+      }
+    }
+
+    function setupResizer(resizer, leftPanel) {
+      let startX, startLeftWidth, nextPanelStartWidth;
+
+      resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const nextPanel = resizer.nextElementSibling;
+        if (!nextPanel) return;
+
+        startX = e.clientX;
+        startLeftWidth = leftPanel.getBoundingClientRect().width;
+        nextPanelStartWidth = nextPanel.getBoundingClientRect().width;
+
+        resizer.classList.add('dragging');
+        document.body.classList.add('resizing');
+
+        const onMouseMove = (e) => {
+          const dx = e.clientX - startX;
+          const newLeftWidth = startLeftWidth + dx;
+          const newRightWidth = nextPanelStartWidth - dx;
+
+          if (newLeftWidth > 120 && newRightWidth > 120) {
+            leftPanel.style.flex = 'none';
+            nextPanel.style.flex = 'none';
+            leftPanel.style.width = `${newLeftWidth}px`;
+            nextPanel.style.width = `${newRightWidth}px`;
+          }
+        };
+
+        const onMouseUp = () => {
+          resizer.classList.remove('dragging');
+          document.body.classList.remove('resizing');
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    }
+
+    applyBtn.addEventListener('click', () => {
+      let count = parseInt(paneCountInput.value, 10);
+      if (isNaN(count) || count < 3) count = 3;
+      if (count > 10) count = 10;
+      paneCountInput.value = count;
+      createPanels(count);
+    });
+
+    createPanels(3);
+  </script>
+</body>
+</html>
