@@ -47,28 +47,41 @@
       height: calc(100vh - 52px);
       overflow: hidden;
     }
-   /* 각 분할 패널의 배경으로 back.jpg 설정 */
-.panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-width: 150px;
-  
-  /* 배경 이미지 설정 */
-  background-image: back.jpg('back.jpg');
-  background-repeat: no-repeat;
-  background-position: center center;
-  background-size: cover; /* 영역 크기에 맞춰 꽉 차게 조절 */
-  background-color: #ffffff; /* 이미지 로딩 전 기본 흰색 */
-}
-
-/* 주소를 입력하기 전까지 배경 이미지가 보이도록 투명 처리 */
-.panel iframe {
-  flex: 1;
-  width: 100%;
-  border: none;
-  background-color: transparent; /* 흰색 대신 투명으로 변경 */
-}
+ .panel {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-width: 180px;
+      background: #ffffff;
+    }
+    .panel-header {
+      display: flex;
+      padding: 8px;
+      background-color: #e2e8f0;
+      border-bottom: 1px solid #cbd5e1;
+      gap: 6px;
+    }
+    .panel-header input {
+      flex: 1;
+      padding: 6px 10px;
+      font-size: 13px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      outline: none;
+    }
+    .panel-header button {
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid #94a3b8;
+      background: white;
+      border-radius: 4px;
+    }
+    .panel iframe {
+      flex: 1;
+      width: 100%;
+      border: none;
+      background-color: #ffffff;
     }
     /* 칸막이 (리사이저) */
     .resizer {
