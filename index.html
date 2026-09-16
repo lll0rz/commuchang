@@ -3,217 +3,243 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>여러가지창 멀티 뷰어</title>
+  <title>여러가지창</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink:   '#0F2A2E',   // 바탕: 깊은 청록 먹색
+            teal:  '#0E8A86',   // 주색: 원작의 teal을 조금 밝게
+            mint:  '#C9E4DE',   // 보조: 연한 민트
+            paper: '#F6F8F5',   // 창 표면
+            line:  '#DCE4E0',   // 구분선
+            amber: '#F2B84B',   // 드래그 중 강조 (한 곳에만)
+          },
+          fontFamily: {
+            sans:    ['"IBM Plex Sans KR"', 'system-ui', 'sans-serif'],
+            display: ['"Gowun Batang"', 'serif'],
+            mono:    ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+          },
+          keyframes: {
+            'pane-in': {
+              from: { opacity: 0, transform: 'translateY(6px) scale(.985)' },
+              to:   { opacity: 1, transform: 'none' },
+            },
+          },
+          animation: { 'pane-in': 'pane-in .28s cubic-bezier(.2,.7,.2,1) both' },
+        },
+      },
+    };
+  </script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      font-family: sans-serif;
-      overflow: hidden;
-      background-color: #037171;
+    .resizing iframe { pointer-events: none; }
+    .resizing { user-select: none; cursor: col-resize; }
+    @media (prefers-reduced-motion: reduce) {
+      .animate-pane-in { animation: none !important; }
     }
-    header {
-      background-color: #E6EBE0;
-      color: white;
-      padding: 10px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 14px;
-    }
-    header input[type="number"] {
-      width: 60px;
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-    header button {
-      padding: 5px 12px;
-      background-color: #037171;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    header button:hover { background-color: #F0F2ED; }
-
-    #container {
-      display: flex;
-      flex: 1;
-      width: 100%;
-      height: calc(100vh - 52px);
-      overflow: hidden;
-    }
-    .panel {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      min-width: 180px;
-      background: #ffffff;
-    }
-    .panel-header {
-      display: flex;
-      padding: 8px;
-      background-color: #e2e8f0;
-      border-bottom: 1px solid #cbd5e1;
-      gap: 6px;
-    }
-    .panel-header input {
-      flex: 1;
-      padding: 6px 10px;
-      font-size: 13px;
-      border: 1px solid #cbd5e1;
-      border-radius: 4px;
-      outline: none;
-    }
-    .panel-header button {
-      padding: 6px 12px;
-      font-size: 12px;
-      cursor: pointer;
-      border: 1px solid #94a3b8;
-      background: white;
-      border-radius: 4px;
-    }
-    .panel iframe {
-      flex: 1;
-      width: 100%;
-      border: none;
-      background-color: #ffffff;
-    }
-    /* 칸막이 (리사이저) */
-    .resizer {
-      width: 3px;
-      background-color: #cbd5e1;
-      cursor: col-resize;
-      transition: background-color 0.2s;
-    }
-    .resizer:hover, .resizer.dragging {
-      background-color: #E6EBE0;
-    }
-    .resizing iframe {
-      pointer-events: none;
+    /* 좁은 화면에서는 세로로 쌓기 */
+    @media (max-width: 640px) {
+      #container { flex-direction: column; overflow-y: auto; gap: 8px; }
+      #container .resizer { display: none; }
+      #container .pane { width: auto !important; flex: 0 0 auto !important; height: 70vh; min-width: 0; }
     }
   </style>
 </head>
-<body>
+<body class="h-dvh flex flex-col overflow-hidden bg-ink font-sans text-ink antialiased">
 
-  <header>
-    <label for="pane-count" style="color: #005E6E; font-weight: bold;">분할 수 (3~10):</label>
-    <input type="number" id="pane-count" min="3" max="10" value="3" />
-    <button id="apply-btn">분할 적용</button>
+  <header class="shrink-0 flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:h-14 sm:py-0 text-paper">
+    <h1 class="font-display text-[22px] leading-none tracking-tight text-mint">여러가지창</h1>
+    <p class="hidden sm:block text-[13px] text-paper/50">공부할 때 여러 사이트를 한 화면에</p>
+
+    <div class="ml-auto flex items-center gap-3 min-w-0 max-w-full">
+      <span class="text-[12px] text-paper/50">분할</span>
+      <div id="picker" role="radiogroup" aria-label="분할 수"
+           class="flex items-center gap-0.5 p-1 rounded-lg bg-white/[.06] ring-1 ring-white/10 overflow-x-auto max-w-full"></div>
+    </div>
   </header>
 
-  <div id="container"></div>
+  <main id="container" class="flex flex-1 min-h-0 min-w-0 w-full px-2 pb-2 gap-0"></main>
+
   <script>
+    const MIN = 3, MAX = 10;
+    const STORAGE_KEY = 'manimanichang:v1';
     const container = document.getElementById('container');
-    const paneCountInput = document.getElementById('pane-count');
-    const applyBtn = document.getElementById('apply-btn');
+    const picker = document.getElementById('picker');
 
-    function createPanels(count) {
-      container.innerHTML = '';
-      for (let i = 0; i < count; i++) {
-        const panel = document.createElement('div');
-        panel.className = 'panel';
-        panel.style.flex = "1";
+    /* ---------- 저장/복원 ---------- */
+    const loadState = () => {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+    };
+    const saveState = () => {
+      const urls = [...container.querySelectorAll('.pane input')].map(i => i.dataset.loaded || '');
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ count: urls.length, urls })); } catch {}
+    };
 
-        const header = document.createElement('div');
-        header.className = 'panel-header';
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        // 기본값은 none 
-        input.value = '보고싶은 창의 주소를 입력하세요';
-        input.placeholder = 'https:// 주소 입력 후 Enter';
-
-        const goBtn = document.createElement('button');
-        goBtn.textContent = '이동';
-
-        header.appendChild(input);
-        header.appendChild(goBtn);
-
-        const iframe = document.createElement('iframe');
-        iframe.src = input.value;
-
-        const loadUrl = () => {
-          let url = input.value.trim();
-          if (!url) return;
-          if (!/^https?:\/\//i.test(url)) {
-            url = 'https://' + url;
-            input.value = url;
-          }
-          iframe.src = url;
-        };
-
-        goBtn.addEventListener('click', loadUrl);
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') loadUrl();
-        });
-
-        panel.appendChild(header);
-        panel.appendChild(iframe);
-        container.appendChild(panel);
-
-        if (i < count - 1) {
-          const resizer = document.createElement('div');
-          resizer.className = 'resizer';
-          setupResizer(resizer, panel);
-          container.appendChild(resizer);
-        }
+    /* ---------- 분할 수 피커 (미니 창 아이콘) ---------- */
+    function windowIcon(n) {
+      // 24x16 상자 안에 n칸을 세로선으로 표시
+      const lines = [];
+      for (let i = 1; i < n; i++) {
+        const x = (24 / n) * i;
+        lines.push(`<line x1="${x.toFixed(2)}" y1="1" x2="${x.toFixed(2)}" y2="15" />`);
       }
+      return `<svg width="24" height="16" viewBox="0 0 24 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <rect x="0.75" y="0.75" width="22.5" height="14.5" rx="2" />${lines.join('')}</svg>`;
     }
 
-    function setupResizer(resizer, leftPanel) {
-      let startX, startLeftWidth, nextPanelStartWidth;
+    function buildPicker(active) {
+      picker.innerHTML = '';
+      for (let n = MIN; n <= MAX; n++) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.role = 'radio';
+        b.dataset.n = n;
+        b.title = `${n}칸`;
+        b.setAttribute('aria-label', `${n}칸으로 나누기`);
+        b.innerHTML = windowIcon(n);
+        b.className = 'shrink-0 grid place-items-center w-8 h-7 rounded-md transition-colors ' +
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint';
+        b.addEventListener('click', () => createPanels(n));
+        picker.appendChild(b);
+      }
+      markPicker(active);
+    }
 
-      resizer.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        const nextPanel = resizer.nextElementSibling;
-        if (!nextPanel) return;
-
-        startX = e.clientX;
-        startLeftWidth = leftPanel.getBoundingClientRect().width;
-        nextPanelStartWidth = nextPanel.getBoundingClientRect().width;
-
-        resizer.classList.add('dragging');
-        document.body.classList.add('resizing');
-
-        const onMouseMove = (e) => {
-          const dx = e.clientX - startX;
-          const newLeftWidth = startLeftWidth + dx;
-          const newRightWidth = nextPanelStartWidth - dx;
-
-          if (newLeftWidth > 120 && newRightWidth > 120) {
-            leftPanel.style.flex = 'none';
-            nextPanel.style.flex = 'none';
-            leftPanel.style.width = `${newLeftWidth}px`;
-            nextPanel.style.width = `${newRightWidth}px`;
-          }
-        };
-
-        const onMouseUp = () => {
-          resizer.classList.remove('dragging');
-          document.body.classList.remove('resizing');
-          document.removeEventListener('mousemove', onMouseMove);
-          document.removeEventListener('mouseup', onMouseUp);
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
+    function markPicker(active) {
+      picker.querySelectorAll('button').forEach(b => {
+        const on = Number(b.dataset.n) === active;
+        b.setAttribute('aria-checked', on);
+        b.classList.toggle('bg-teal', on);
+        b.classList.toggle('text-white', on);
+        b.classList.toggle('text-paper/45', !on);
+        b.classList.toggle('hover:text-paper', !on);
+        b.classList.toggle('hover:bg-white/10', !on);
       });
     }
 
-    applyBtn.addEventListener('click', () => {
-      let count = parseInt(paneCountInput.value, 10);
-      if (isNaN(count) || count < 3) count = 3;
-      if (count > 10) count = 10;
-      paneCountInput.value = count;
-      createPanels(count);
-    });
+    /* ---------- 창 만들기 ---------- */
+    function createPanels(count, urls = []) {
+      count = Math.min(MAX, Math.max(MIN, count));
+      container.innerHTML = '';
+      markPicker(count);
 
-    createPanels(3);
+      for (let i = 0; i < count; i++) {
+        const pane = document.createElement('section');
+        pane.className = 'pane flex flex-col min-w-[180px] min-h-0 rounded-xl overflow-hidden ' +
+          'bg-paper shadow-[0_8px_30px_-12px_rgba(0,0,0,.6)] ring-1 ring-black/20 animate-pane-in';
+        pane.style.flex = '1';
+        pane.style.animationDelay = `${i * 35}ms`;
+
+        const bar = document.createElement('div');
+        bar.className = 'flex items-center gap-1.5 px-2 py-1.5 bg-white border-b border-line';
+
+        const input = document.createElement('input');
+        input.type = 'url';
+        input.inputMode = 'url';
+        input.spellcheck = false;
+        input.placeholder = '주소를 넣고 Enter';
+        input.className = 'flex-1 min-w-0 h-8 px-2.5 rounded-md font-mono text-[12.5px] text-ink ' +
+          'bg-paper border border-line placeholder:text-ink/35 ' +
+          'focus:outline-none focus:border-teal focus:ring-2 focus:ring-teal/25';
+
+        const go = document.createElement('button');
+        go.type = 'button';
+        go.textContent = '열기';
+        go.className = 'h-8 px-3 rounded-md text-[12.5px] font-semibold text-white bg-teal ' +
+          'hover:bg-[#0B7370] active:scale-95 transition ' +
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/50';
+
+        const reload = document.createElement('button');
+        reload.type = 'button';
+        reload.title = '이 창 새로고침';
+        reload.setAttribute('aria-label', '이 창 새로고침');
+        reload.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>';
+        reload.className = 'hidden h-8 w-8 grid place-items-center rounded-md text-ink/50 ' +
+          'hover:text-teal hover:bg-mint/40 transition ' +
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/50';
+
+        bar.append(input, go, reload);
+
+        // 처음엔 src 없이 빈 창 → back.jpg가 보임
+        const frame = document.createElement('iframe');
+        frame.title = `${i + 1}번 창`;
+        frame.className = "flex-1 w-full border-0 bg-paper bg-[url('back.jpg')] bg-cover bg-top bg-no-repeat";
+
+        const open = () => {
+          let url = input.value.trim();
+          if (!url) return;
+          if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+          input.value = url;
+          input.dataset.loaded = url;
+          frame.src = url;
+          reload.classList.remove('hidden');
+          saveState();
+        };
+
+        go.addEventListener('click', open);
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
+        reload.addEventListener('click', () => { if (frame.src) frame.src = frame.src; });
+
+        pane.append(bar, frame);
+        container.appendChild(pane);
+
+        if (urls[i]) { input.value = urls[i]; open(); }
+
+        if (i < count - 1) {
+          const r = document.createElement('div');
+          r.className = 'resizer group shrink-0 w-2 grid place-items-center cursor-col-resize';
+          r.innerHTML = '<span class="block w-[3px] h-9 rounded-full bg-white/15 transition-colors group-hover:bg-mint"></span>';
+          setupResizer(r, pane);
+          container.appendChild(r);
+        }
+      }
+      saveState();
+    }
+
+    /* ---------- 칸막이 드래그 ---------- */
+    function setupResizer(resizer, leftPane) {
+      const handle = resizer.firstElementChild;
+      resizer.addEventListener('mousedown', e => {
+        e.preventDefault();
+        const rightPane = resizer.nextElementSibling;
+        if (!rightPane) return;
+
+        const startX = e.clientX;
+        const leftW = leftPane.getBoundingClientRect().width;
+        const rightW = rightPane.getBoundingClientRect().width;
+
+        handle.classList.add('!bg-amber');
+        document.body.classList.add('resizing');
+
+        const move = e => {
+          const dx = e.clientX - startX;
+          const l = leftW + dx, r = rightW - dx;
+          if (l > 180 && r > 180) {
+            leftPane.style.flex = rightPane.style.flex = 'none';
+            leftPane.style.width = `${l}px`;
+            rightPane.style.width = `${r}px`;
+          }
+        };
+        const up = () => {
+          handle.classList.remove('!bg-amber');
+          document.body.classList.remove('resizing');
+          document.removeEventListener('mousemove', move);
+          document.removeEventListener('mouseup', up);
+        };
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
+      });
+    }
+
+    /* ---------- 시작 ---------- */
+    const saved = loadState();
+    buildPicker(saved.count || 3);
+    createPanels(saved.count || 3, saved.urls || []);
   </script>
 </body>
 </html>
